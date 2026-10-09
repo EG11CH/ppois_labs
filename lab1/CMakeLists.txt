@@ -3,13 +3,13 @@ target_compile_features(lab1_options INTERFACE cxx_std_17)
 target_compile_options(lab1_options INTERFACE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Wpedantic;-Wconversion;-Wshadow;-Werror>)
 
-add_library(lab1_domain src/EnglishRussianDictionary.cpp)
+add_library(lab1_domain src/EnglishRussianDictionary.cpp src/Set.cpp src/SetElement.cpp)
 target_include_directories(lab1_domain PUBLIC include)
 target_link_libraries(lab1_domain PUBLIC lab1_options)
 
 if(BUILD_TESTING)
     find_package(Catch2 REQUIRED)
-    add_executable(lab1_tests tests/DictionaryTests.cpp)
+    add_executable(lab1_tests tests/DictionaryTests.cpp tests/SetTests.cpp)
     target_link_libraries(lab1_tests PRIVATE lab1_domain Catch2::Catch2WithMain)
     list(APPEND CMAKE_MODULE_PATH "${Catch2_DIR}")
     include(Catch)
