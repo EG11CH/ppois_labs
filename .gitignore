@@ -1,0 +1,13 @@
+/build*/
+/.venv/
+/.idea/
+/.vscode/
+/release/
+*.o
+*.a
+*.so
+*.gcda
+*.gcno
+*.gcov
+*.zip
+__pycache__/
