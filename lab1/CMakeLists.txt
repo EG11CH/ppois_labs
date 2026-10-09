@@ -27,3 +27,11 @@ if(BUILD_TESTING)
         COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/smoke_cli.py"
         "$<TARGET_FILE:dictionary_cli>" "$<TARGET_FILE:set_cli>")
 endif()
+
+find_package(Doxygen QUIET)
+if(DOXYGEN_FOUND)
+    configure_file(Doxyfile.in Doxyfile @ONLY)
+    add_custom_target(docs
+        COMMAND Doxygen::doxygen "${CMAKE_CURRENT_BINARY_DIR}/Doxyfile"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
