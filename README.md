@@ -82,11 +82,12 @@ Workflow `.github/workflows/lab1.yml` выполняет сборку, тест�
 после одобрения преподавателя. Правила защиты ветки настраиваются в GitHub.
 Существующие корневые файлы и лабораторные следует сохранить при переносе.
 
-Публикация Releases запускается тегом `lab1-v*` после проверок и только для
-коммита, который уже входит в `main`. Первый тег после одобренного PR:
+Публикация Releases запускается тегом `lab1-v*` после успешных проверок.
+Коммит должен входить в `feature/lab1-dictionary-set` или `main`.
+Для релиза из feature-ветки слияние в `main` не требуется:
 
 ```bash
-git switch main
+git switch feature/lab1-dictionary-set
 git pull --ff-only
 git tag lab1-v1.0.0
 git push origin lab1-v1.0.0
