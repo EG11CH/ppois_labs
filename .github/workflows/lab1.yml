@@ -61,8 +61,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Check that the release commit is in main
-        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: Check that the release commit belongs to the lab1 branch or main
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/feature/lab1-dictionary-set ||
+            git merge-base --is-ancestor "$GITHUB_SHA" origin/main
       - uses: actions/download-artifact@v6
         with:
           name: lab1-linux-x86_64
