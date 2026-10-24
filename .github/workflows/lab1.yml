@@ -1,0 +1,83 @@
+name: Lab1 build, tests, documentation and release
+
+on:
+  pull_request:
+    paths: ["lab1/**", "CMakeLists.txt", ".clang-format", ".github/workflows/lab1.yml"]
+  push:
+    branches: ["main", "feature/**"]
+    tags: ["lab1-v*"]
+    paths: ["lab1/**", "CMakeLists.txt", ".clang-format", ".github/workflows/lab1.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install build and verification tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ cmake catch2 doxygen cppcheck clang-format ripgrep
+          python -m pip install -r lab1/requirements-dev.txt
+      - name: Check formatting and static analysis
+        run: |
+          rg --files lab1 -g '*.h' -g '*.cpp' --null | xargs -0 clang-format --dry-run --Werror
+          cppcheck --enable=warning,style,performance,portability --suppress=useStlAlgorithm --std=c++17 --error-exitcode=1 -I lab1/include -I lab1/cli lab1/src lab1/cli
+      - name: Build and run tests
+        run: |
+          cmake -S . -B build -DENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build --parallel 2
+          ctest --test-dir build --output-on-failure
+          python lab1/tools/check_coverage.py build
+          cmake --build build --target docs
+      - name: Create standalone release programs
+        run: |
+          cmake -S . -B build-release -DBUILD_TESTING=OFF -DBUILD_PORTABLE_BINARIES=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-release --parallel 2
+          python lab1/tools/smoke_cli.py build-release/lab1/dictionary_cli build-release/lab1/set_cli
+          python lab1/tools/package_release.py build-release build/lab1/documentation/html release
+      - uses: actions/upload-artifact@v6
+        with:
+          name: lab1-linux-x86_64
+          path: release/lab1-linux-x86_64.tar.gz
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v6
+        with:
+          name: lab1-coverage
+          path: build/coverage/
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/lab1-v')
+    needs: verify
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Check that the release commit belongs to the lab1 branch or main
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/feature/lab1-dictionary-set ||
+            git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - uses: actions/download-artifact@v6
+        with:
+          name: lab1-linux-x86_64
+          path: release
+      - name: Publish tested release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release/lab1-linux-x86_64.tar.gz --clobber
+          else
+            gh release create "$RELEASE_TAG" release/lab1-linux-x86_64.tar.gz --verify-tag --generate-notes
+          fi
