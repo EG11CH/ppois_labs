@@ -130,8 +130,18 @@ void executeCommand(int number, Set& left, Set& right, std::istream& input, std:
 int runSetCli(std::istream& input, std::ostream& output) {
     Set left;
     Set right;
-    return runMenu(input, output, setMenu,
-                   [&](int command) { executeCommand(command, left, right, input, output); });
+    while (true) {
+        output << setMenu << "\nВыбор: ";
+        try {
+            int command = 0;
+            if (!readCommand(input, command) || command == 0) {
+                return 0;
+            }
+            executeCommand(command, left, right, input, output);
+        } catch (const std::exception& error) {
+            output << "Ошибка: " << error.what() << '\n';
+        }
+    }
 }
 
 } // namespace lab1::cli

@@ -124,8 +124,18 @@ void executeCommand(int number, EnglishRussianDictionary& dictionary, std::istre
 
 int runDictionaryCli(std::istream& input, std::ostream& output) {
     EnglishRussianDictionary dictionary;
-    return runMenu(input, output, dictionaryMenu,
-                   [&](int command) { executeCommand(command, dictionary, input, output); });
+    while (true) {
+        output << dictionaryMenu << "\nВыбор: ";
+        try {
+            int command = 0;
+            if (!readCommand(input, command) || command == 0) {
+                return 0;
+            }
+            executeCommand(command, dictionary, input, output);
+        } catch (const std::exception& error) {
+            output << "Ошибка: " << error.what() << '\n';
+        }
+    }
 }
 
 } // namespace lab1::cli

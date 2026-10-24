@@ -18,7 +18,7 @@ def main():
     reports.mkdir(parents=True, exist_ok=True)
     subprocess.run(
         [
-            "gcovr", "--root", str(ROOT), "--filter", "lab1/(include|src|cli|app)/",
+            "gcovr", "--root", str(ROOT), "--filter", "lab1/(include|src|cli)/",
             "--json-summary", str(reports / "summary.json"),
             "--html-details", str(reports / "index.html"), str(build_directory),
         ],

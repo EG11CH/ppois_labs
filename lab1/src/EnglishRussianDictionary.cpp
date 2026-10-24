@@ -23,12 +23,11 @@ EnglishRussianDictionary::EnglishRussianDictionary(const EnglishRussianDictionar
 }
 
 EnglishRussianDictionary::EnglishRussianDictionary(EnglishRussianDictionary&& other) noexcept
-    : root_(std::move(other.root_)), wordCount_(std::exchange(other.wordCount_, 0)) {
+    : root_(std::move(other.root_)), wordCount_(other.wordCount_) {
+    other.wordCount_ = 0;
 }
 
-EnglishRussianDictionary::~EnglishRussianDictionary() {
-    clear();
-}
+EnglishRussianDictionary::~EnglishRussianDictionary() = default;
 
 EnglishRussianDictionary&
 EnglishRussianDictionary::operator=(const EnglishRussianDictionary& other) {
@@ -44,40 +43,47 @@ EnglishRussianDictionary::operator=(EnglishRussianDictionary&& other) noexcept {
     if (this != &other) {
         clear();
         root_ = std::move(other.root_);
-        wordCount_ = std::exchange(other.wordCount_, 0);
+        wordCount_ = other.wordCount_;
+        other.wordCount_ = 0;
     }
     return *this;
 }
 
-std::unique_ptr<EnglishRussianDictionary::Node>*
-EnglishRussianDictionary::findLink(const std::string& englishWord) noexcept {
-    auto* link = &root_;
-    while (*link && (*link)->entry.first != englishWord) {
-        const bool goLeft = englishWord < (*link)->entry.first;
-        link = goLeft ? &(*link)->left : &(*link)->right;
+// Поиск идёт влево для меньшего ключа и вправо для большего.
+EnglishRussianDictionary::Node*
+EnglishRussianDictionary::findNode(const std::string& englishWord) const noexcept {
+    Node* current = root_.get();
+    while (current != nullptr) {
+        if (englishWord == current->entry.first) {
+            return current;
+        }
+        if (englishWord < current->entry.first) {
+            current = current->left.get();
+        } else {
+            current = current->right.get();
+        }
     }
-    return link;
+    return nullptr;
 }
 
-const EnglishRussianDictionary::Node*
-EnglishRussianDictionary::findNode(const std::string& englishWord) const noexcept {
-    const Node* current = root_.get();
-    while (current && current->entry.first != englishWord) {
-        const bool goLeft = englishWord < current->entry.first;
-        current = goLeft ? current->left.get() : current->right.get();
+// Ссылка на unique_ptr позволяет изменить нужную ветвь дерева.
+void EnglishRussianDictionary::insertNode(std::unique_ptr<Node>& node, const Entry& entry) {
+    if (node == nullptr) {
+        node = std::make_unique<Node>(entry);
+    } else if (entry.first < node->entry.first) {
+        insertNode(node->left, entry);
+    } else if (entry.first > node->entry.first) {
+        insertNode(node->right, entry);
+    } else {
+        throw std::invalid_argument("Это слово уже есть в словаре");
     }
-    return current;
 }
 
 EnglishRussianDictionary& EnglishRussianDictionary::operator+=(const Entry& entry) {
     if (entry.first.empty()) {
         throw std::invalid_argument("Английское слово не может быть пустым");
     }
-    auto* link = findLink(entry.first);
-    if (*link) {
-        throw std::invalid_argument("Это слово уже есть в словаре");
-    }
-    *link = std::make_unique<Node>(entry);
+    insertNode(root_, entry);
     ++wordCount_;
     return *this;
 }
@@ -95,37 +101,54 @@ EnglishRussianDictionary& EnglishRussianDictionary::operator+=(const MutableCStr
     return *this += readOnlyStrings;
 }
 
-std::unique_ptr<EnglishRussianDictionary::Node>*
-EnglishRussianDictionary::prepareRemoval(std::unique_ptr<Node>* link) noexcept {
-    if (!(*link)->left || !(*link)->right) {
-        return link;
+// Для узла с двумя потомками берём следующее по порядку слово справа.
+void EnglishRussianDictionary::removeRoot(std::unique_ptr<Node>& node) {
+    if (node->left != nullptr && node->right != nullptr) {
+        Node* successor = node->right.get();
+        while (successor->left != nullptr) {
+            successor = successor->left.get();
+        }
+        const std::string oldWord = node->entry.first;
+        node->entry.swap(successor->entry);
+        removeNode(node->right, oldWord);
+    } else {
+        std::unique_ptr<Node> removed = std::move(node);
+        if (removed->left != nullptr) {
+            node = std::move(removed->left);
+        } else {
+            node = std::move(removed->right);
+        }
     }
-    auto* successor = &(*link)->right;
-    while ((*successor)->left) {
-        successor = &(*successor)->left;
+}
+
+bool EnglishRussianDictionary::removeNode(std::unique_ptr<Node>& node,
+                                          const std::string& englishWord) {
+    if (node == nullptr) {
+        return false;
     }
-    (*link)->entry.swap((*successor)->entry);
-    return successor;
+    if (englishWord < node->entry.first) {
+        return removeNode(node->left, englishWord);
+    }
+    if (englishWord > node->entry.first) {
+        return removeNode(node->right, englishWord);
+    }
+    removeRoot(node);
+    return true;
 }
 
 EnglishRussianDictionary& EnglishRussianDictionary::operator-=(const std::string& englishWord) {
-    auto* link = findLink(englishWord);
-    if (!*link) {
-        return *this;
+    if (removeNode(root_, englishWord)) {
+        --wordCount_;
     }
-    link = prepareRemoval(link);
-    auto removed = std::move(*link);
-    *link = removed->left ? std::move(removed->left) : std::move(removed->right);
-    --wordCount_;
     return *this;
 }
 
 std::string& EnglishRussianDictionary::operator[](const std::string& englishWord) {
-    auto* link = findLink(englishWord);
-    if (!*link) {
+    Node* found = findNode(englishWord);
+    if (found == nullptr) {
         throw std::out_of_range("Слово не найдено");
     }
-    return (*link)->entry.second;
+    return found->entry.second;
 }
 
 const std::string& EnglishRussianDictionary::operator[](const std::string& englishWord) const {
@@ -149,17 +172,7 @@ bool EnglishRussianDictionary::contains(const std::string& englishWord) const no
 }
 
 void EnglishRussianDictionary::clear() noexcept {
-    while (root_) {
-        if (root_->left) {
-            auto leftChild = std::move(root_->left);
-            root_->left = std::move(leftChild->right);
-            leftChild->right = std::move(root_);
-            root_ = std::move(leftChild);
-        } else {
-            auto removed = std::move(root_);
-            root_ = std::move(removed->right);
-        }
-    }
+    root_.reset();
     wordCount_ = 0;
 }
 
@@ -168,48 +181,32 @@ void EnglishRussianDictionary::swap(EnglishRussianDictionary& other) noexcept {
     std::swap(wordCount_, other.wordCount_);
 }
 
+// Каждый узел копируется вместе с левым и правым поддеревом.
 std::unique_ptr<EnglishRussianDictionary::Node>
 EnglishRussianDictionary::cloneTree(const std::unique_ptr<Node>& source) {
-    if (!source) {
+    if (source == nullptr) {
         return nullptr;
     }
-    auto copy = std::make_unique<Node>(source->entry);
-    std::vector<std::pair<const Node*, Node*>> pending{{source.get(), copy.get()}};
-    while (!pending.empty()) {
-        const auto [original, cloned] = pending.back();
-        pending.pop_back();
-        cloneChildren(original, cloned, pending);
-    }
+    std::unique_ptr<Node> copy = std::make_unique<Node>(source->entry);
+    copy->left = cloneTree(source->left);
+    copy->right = cloneTree(source->right);
     return copy;
 }
 
-void EnglishRussianDictionary::cloneChildren(const Node* original, Node* cloned,
-                                             std::vector<std::pair<const Node*, Node*>>& pending) {
-    for (const bool leftSide : {true, false}) {
-        const auto& child = leftSide ? original->left : original->right;
-        if (child) {
-            auto& target = leftSide ? cloned->left : cloned->right;
-            target = std::make_unique<Node>(child->entry);
-            pending.emplace_back(child.get(), target.get());
-        }
+// Симметричный обход: левое поддерево, текущий узел, правое поддерево.
+void EnglishRussianDictionary::collectEntries(const Node* node, std::vector<Entry>& entries) {
+    if (node == nullptr) {
+        return;
     }
+    collectEntries(node->left.get(), entries);
+    entries.push_back(node->entry);
+    collectEntries(node->right.get(), entries);
 }
 
 std::vector<EnglishRussianDictionary::Entry> EnglishRussianDictionary::orderedEntries() const {
-    std::vector<Entry> result;
-    std::vector<const Node*> ancestors;
-    const Node* current = root_.get();
-    while (current || !ancestors.empty()) {
-        while (current) {
-            ancestors.push_back(current);
-            current = current->left.get();
-        }
-        current = ancestors.back();
-        ancestors.pop_back();
-        result.push_back(current->entry);
-        current = current->right.get();
-    }
-    return result;
+    std::vector<Entry> entries;
+    collectEntries(root_.get(), entries);
+    return entries;
 }
 
 bool EnglishRussianDictionary::operator==(const EnglishRussianDictionary& other) const {
@@ -222,8 +219,9 @@ bool EnglishRussianDictionary::operator!=(const EnglishRussianDictionary& other)
 
 std::ostream& operator<<(std::ostream& output, const EnglishRussianDictionary& dictionary) {
     output << dictionary.wordCount_ << '\n';
-    for (const auto& [word, translation] : dictionary.orderedEntries()) {
-        output << std::quoted(word) << ' ' << std::quoted(translation) << '\n';
+    const std::vector<EnglishRussianDictionary::Entry> entries = dictionary.orderedEntries();
+    for (const auto& entry : entries) {
+        output << std::quoted(entry.first) << ' ' << std::quoted(entry.second) << '\n';
     }
     return output;
 }
@@ -254,6 +252,7 @@ bool readEntries(std::istream& input, EnglishRussianDictionary& result) {
 }
 } // namespace
 
+// Ошибка чтения не должна уничтожать прежнее содержимое словаря.
 std::istream& operator>>(std::istream& input, EnglishRussianDictionary& dictionary) {
     EnglishRussianDictionary replacement;
     try {
