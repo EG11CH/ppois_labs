@@ -16,10 +16,13 @@ std::string readLine(std::istream& input, std::ostream& output, const std::strin
     return line;
 }
 
-namespace {
-int parseCommand(const std::string& line) {
+// false означает конец ввода; неверная команда вызывает исключение.
+bool readCommand(std::istream& input, int& command) {
+    std::string line;
+    if (!std::getline(input, line)) {
+        return false;
+    }
     std::istringstream parser(line);
-    int command = 0;
     if (!(parser >> command)) {
         throw std::invalid_argument("Введите номер пункта меню");
     }
@@ -27,33 +30,7 @@ int parseCommand(const std::string& line) {
     if (!parser.eof()) {
         throw std::invalid_argument("После номера команды есть лишние символы");
     }
-    return command;
-}
-bool executeLine(const std::string& line, std::ostream& output,
-                 const std::function<void(int)>& execute) {
-    constexpr int exitCommand = 0;
-    try {
-        const int command = parseCommand(line);
-        if (command == exitCommand) {
-            return false;
-        }
-        execute(command);
-    } catch (const std::exception& error) {
-        output << "Ошибка: " << error.what() << '\n';
-    }
     return true;
-}
-} // namespace
-
-int runMenu(std::istream& input, std::ostream& output, const std::string& menu,
-            const std::function<void(int)>& execute) {
-    while (true) {
-        output << menu << "\nВыбор: ";
-        std::string line;
-        if (!std::getline(input, line) || !executeLine(line, output, execute)) {
-            return 0;
-        }
-    }
 }
 
 } // namespace lab1::cli

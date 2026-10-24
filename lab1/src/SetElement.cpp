@@ -1,13 +1,11 @@
 #include "lab1/SetElement.h"
 #include "lab1/Set.h"
 
-#include <algorithm>
 #include <cctype>
 #include <iomanip>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
-#include <string_view>
 #include <utility>
 
 namespace lab1 {
@@ -21,9 +19,11 @@ SetElement::SetElement(std::string atom) : atom_(std::move(atom)) {
 SetElement::SetElement(const Set& nestedSet) : nestedSet_(std::make_unique<Set>(nestedSet)) {
 }
 
-SetElement::SetElement(const SetElement& other)
-    : atom_(other.atom_),
-      nestedSet_(other.nestedSet_ ? std::make_unique<Set>(*other.nestedSet_) : nullptr) {
+SetElement::SetElement(const SetElement& other) : atom_(other.atom_) {
+    // Создаём собственное вложенное множество, а не копируем его адрес.
+    if (other.isSet()) {
+        nestedSet_ = std::make_unique<Set>(*other.nestedSet_);
+    }
 }
 
 SetElement::SetElement(SetElement&& other) noexcept = default;
@@ -66,7 +66,10 @@ bool SetElement::operator==(const SetElement& other) const {
     if (isSet() != other.isSet()) {
         return false;
     }
-    return isSet() ? *nestedSet_ == *other.nestedSet_ : atom_ == other.atom_;
+    if (isSet()) {
+        return *nestedSet_ == *other.nestedSet_;
+    }
+    return atom_ == other.atom_;
 }
 
 bool SetElement::operator!=(const SetElement& other) const {
@@ -75,11 +78,14 @@ bool SetElement::operator!=(const SetElement& other) const {
 
 namespace {
 bool needsQuotes(const std::string& atom) {
-    return std::any_of(atom.begin(), atom.end(), [](const char character) {
-        constexpr std::string_view specialCharacters = "{},\"\\";
+    const std::string specialCharacters = "{},\"\\";
+    for (char character : atom) {
         const bool space = std::isspace(static_cast<unsigned char>(character)) != 0;
-        return space || specialCharacters.find(character) != std::string_view::npos;
-    });
+        if (space || specialCharacters.find(character) != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
 }
 } // namespace
 

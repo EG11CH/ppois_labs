@@ -256,7 +256,7 @@ TEST_CASE("Dictionary failed file loads are atomic", "[dictionary]") {
     REQUIRE(dictionary == original);
 }
 
-TEST_CASE("Dictionary handles a long skewed tree without recursive traversal", "[dictionary]") {
+TEST_CASE("Dictionary copies compares and clears a skewed tree of 1500 nodes", "[dictionary]") {
     constexpr int wordCount = 1500;
     Dictionary dictionary;
     for (int index = 0; index < wordCount; ++index) {

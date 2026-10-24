@@ -4,7 +4,6 @@
 #include <cctype>
 #include <iomanip>
 #include <istream>
-#include <iterator>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
@@ -32,10 +31,12 @@ std::size_t Set::size() const noexcept {
     return elements_.size();
 }
 
+// Оператор [] проверяет принадлежность, а не обращается по индексу.
 bool Set::operator[](const SetElement& element) const {
     return std::find(elements_.begin(), elements_.end(), element) != elements_.end();
 }
 
+// Повторяющиеся элементы в множество не добавляются.
 bool Set::add(const SetElement& element) {
     if ((*this)[element]) {
         return false;
@@ -53,6 +54,7 @@ bool Set::remove(const SetElement& element) {
     return true;
 }
 
+// Объединение содержит элементы обоих множеств без повторов.
 Set Set::operator+(const Set& other) const {
     Set result(*this);
     result += other;
@@ -68,6 +70,7 @@ Set& Set::operator+=(const Set& other) {
     return *this;
 }
 
+// Пересечение содержит только общие элементы.
 Set Set::operator*(const Set& other) const {
     Set result;
     for (const auto& element : elements_) {
@@ -84,6 +87,7 @@ Set& Set::operator*=(const Set& other) {
     return *this;
 }
 
+// Разность содержит элементы слева, которых нет справа.
 Set Set::operator-(const Set& other) const {
     Set result;
     for (const auto& element : elements_) {
@@ -100,12 +104,13 @@ Set& Set::operator-=(const Set& other) {
     return *this;
 }
 
+// К уже построенным подмножествам добавляем копии с новым элементом.
 void Set::appendSubsets(std::vector<Set>& subsets, const SetElement& element) {
     const std::size_t previousSize = subsets.size();
     for (std::size_t index = 0; index < previousSize; ++index) {
         Set extended = subsets[index];
         extended.add(element);
-        subsets.push_back(std::move(extended));
+        subsets.push_back(extended);
     }
 }
 
@@ -140,12 +145,17 @@ Set Set::powerSet(std::size_t maxSubsets) const {
     return result;
 }
 
+// Порядок хранения элементов не влияет на равенство.
 bool Set::operator==(const Set& other) const {
     if (size() != other.size()) {
         return false;
     }
-    return std::all_of(elements_.begin(), elements_.end(),
-                       [&other](const SetElement& element) { return other[element]; });
+    for (const SetElement& element : elements_) {
+        if (!other[element]) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool Set::operator!=(const Set& other) const {
@@ -201,6 +211,7 @@ bool consumeSeparator(std::istream& input) {
     return separator == '}';
 }
 
+// Вложенные фигурные скобки разбираются вызовом этой же функции.
 Set parseSet(std::istream& input, std::size_t depth) {
     input >> std::ws;
     if (depth >= Set::maxParseDepth || input.get() != '{') {
@@ -212,13 +223,11 @@ Set parseSet(std::istream& input, std::size_t depth) {
         input.get();
         return result;
     }
-    while (true) {
+    do {
         const SetElement element = parseElement(input, depth + 1);
         result.add(element);
-        if (consumeSeparator(input)) {
-            return result;
-        }
-    }
+    } while (!consumeSeparator(input));
+    return result;
 }
 
 void requireEnd(std::istream& input) {
@@ -255,8 +264,9 @@ std::istream& operator>>(std::istream& input, Set& set) {
 
 std::ostream& operator<<(std::ostream& output, const Set& set) {
     std::vector<std::string> representations;
-    std::transform(set.elements_.begin(), set.elements_.end(), std::back_inserter(representations),
-                   [](const SetElement& element) { return element.toString(); });
+    for (const SetElement& element : set.elements_) {
+        representations.push_back(element.toString());
+    }
     std::sort(representations.begin(), representations.end());
     output << '{';
     bool first = true;

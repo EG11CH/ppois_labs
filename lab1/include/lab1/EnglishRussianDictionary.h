@@ -62,12 +62,12 @@ class EnglishRussianDictionary {
     std::unique_ptr<Node> root_;
     std::size_t wordCount_ = 0;
 
-    std::unique_ptr<Node>* findLink(const std::string& englishWord) noexcept;
-    const Node* findNode(const std::string& englishWord) const noexcept;
-    static std::unique_ptr<Node>* prepareRemoval(std::unique_ptr<Node>* link) noexcept;
+    Node* findNode(const std::string& englishWord) const noexcept;
+    static void insertNode(std::unique_ptr<Node>& node, const Entry& entry);
+    static bool removeNode(std::unique_ptr<Node>& node, const std::string& englishWord);
+    static void removeRoot(std::unique_ptr<Node>& node);
     static std::unique_ptr<Node> cloneTree(const std::unique_ptr<Node>& source);
-    static void cloneChildren(const Node* original, Node* cloned,
-                              std::vector<std::pair<const Node*, Node*>>& pending);
+    static void collectEntries(const Node* node, std::vector<Entry>& entries);
     std::vector<Entry> orderedEntries() const;
 };
 
