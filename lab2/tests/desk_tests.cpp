@@ -69,6 +69,9 @@ TEST_CASE("Полный цикл проката с продлением и во�
     CHECK_THROWS_AS(desk.reserve(request(2, 101, 10, 13)), AssetUnavailable);
     desk.extend({contract, date(6), date(9), "Нужен ещё день"});
     REQUIRE(desk.contracts().find(contract).quote().period.end() == date(9));
+    CHECK_THROWS_AS(desk.extend({contract, date(5), date(10), "Задним числом"}), InvalidPeriod);
+    CHECK_THROWS_AS(desk.acceptReturn(returned(contract, 101, date(5))), InvalidPeriod);
+    CHECK(desk.contracts().find(contract).isActive());
     CHECK_THROWS_AS(desk.acceptReturn(returned(404)), UnknownContract);
     CHECK_THROWS_AS(desk.acceptReturn(returned(contract, 101, date(4))), InvalidContractState);
     const auto& bill = desk.acceptReturn(returned(contract, 101, date(9)));
@@ -175,6 +178,20 @@ TEST_CASE("Последующая бронь блокирует только к�
     CHECK(desk.contracts().find(contract).quote().period.end() == date(9));
     CHECK(desk.contracts().activeFor(1) == 1);
     CHECK(desk.contracts().activeFor(2) == 0);
+}
+
+TEST_CASE("Списанный предмет исключается из очереди ожидания", "[desk]") {
+    auto desk = demoDesk();
+    const auto reservation = desk.reserve(request());
+    const auto requestInQueue = request(2, 101, 7, 10);
+    const auto waiting = desk.joinWaitlist(requestInQueue);
+    REQUIRE(desk.waitingFor(101, date(3)) == std::vector<Id>{waiting});
+
+    desk.cancel({reservation, date(3), "Не нужен"});
+    desk.retireAsset(101, date(3));
+    CHECK(desk.waitingFor(101, date(3)).empty());
+    CHECK_THROWS_AS(desk.joinWaitlist(requestInQueue), AssetUnavailable);
+    CHECK_THROWS_AS(desk.promote(waiting, date(3)), AssetUnavailable);
 }
 
 TEST_CASE("Повторная регистрация и ошибки справочника сохраняют исходное состояние", "[desk]") {

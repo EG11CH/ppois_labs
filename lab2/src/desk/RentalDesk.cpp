@@ -8,12 +8,14 @@
 #include "lab2/customers/CustomerAccount.h"
 #include "lab2/desk/AssetTerms.h"
 #include "lab2/desk/RentalPolicy.h"
+#include "lab2/errors/AssetUnavailable.h"
 #include "lab2/errors/BookingConflict.h"
 #include "lab2/errors/DuplicateId.h"
 #include "lab2/errors/InvalidCustomer.h"
 #include "lab2/errors/InvalidReservationState.h"
 #include "lab2/errors/MaintenanceError.h"
 #include "lab2/inventory/Asset.h"
+#include "lab2/inventory/AssetState.h"
 #include "lab2/inventory/Availability.h"
 #include "lab2/inventory/Branch.h"
 #include "lab2/inventory/Inventory.h"
@@ -71,7 +73,7 @@ void RentalDesk::retireAsset(Id asset, Day day) {
         throw BookingConflict("Нельзя списать предмет с будущей бронью.");
     }
     item.retire();
-    terms.lastMovement = day;
+    terms.lastOperation = day;
 }
 
 void RentalDesk::suspendCustomer(Id customer) {
@@ -126,11 +128,15 @@ Id RentalDesk::joinWaitlist(BookingRequest request) {
     policy_.holds.checkRequest(request);
     customers_.verifyBooking(request.customerId, request.period,
                              reservations_.heldFor(request.customerId));
+    const auto& asset = inventory_.find(request.assetId);
+    if (asset.state() == AssetState::retired) {
+        throw AssetUnavailable("Списанный предмет нельзя поставить в очередь ожидания.");
+    }
     const auto availabilityNow = availability(request.assetId, request.period);
     if (availabilityNow.canReserve()) {
         throw InvalidReservationState("Предмет свободен — оформи обычную бронь.");
     }
-    policy_.price(request, customers_.find(request.customerId), inventory_.find(request.assetId),
+    policy_.price(request, customers_.find(request.customerId), asset,
                   terms_.at(request.assetId).tariff);
     return waiting_.enqueue(std::move(request));
 }
@@ -143,7 +149,9 @@ Id RentalDesk::promote(Id waiting, Day day) {
 }
 
 std::vector<Id> RentalDesk::waitingFor(Id asset, Day day) const {
-    inventory_.find(asset);
+    if (inventory_.find(asset).state() == AssetState::retired) {
+        return {};
+    }
     return waiting_.candidates(asset, day);
 }
 
@@ -168,7 +176,7 @@ Id RentalDesk::issue(CheckoutRecord checkout, Money paidDeposit) {
     contracts_.store({id, request, std::move(checkout), reservation.quote(), std::move(receipt)});
     reservation.redeem();
     asset.issue();
-    terms.lastMovement = issuedOn;
+    terms.lastOperation = issuedOn;
     return id;
 }
 
@@ -178,6 +186,8 @@ void RentalDesk::extend(const ExtensionRequest& request) {
     const auto period =
         request.applyTo(contract.id(), contract.issuedOn(), contract.quote().period);
     const auto& booking = contract.booking();
+    auto& terms = terms_.at(booking.assetId);
+    terms.verifyTimeline(request.requestedOn);
     const Period added{contract.quote().period.end(), period.end()};
     if (reservations_.conflicts(booking.assetId, added)) {
         throw BookingConflict("Продление пересекается с последующей бронью.");
@@ -187,10 +197,10 @@ void RentalDesk::extend(const ExtensionRequest& request) {
         throw InvalidCustomer("Клиент не может продлить договор до этой даты.");
     }
     const auto& asset = inventory_.find(booking.assetId);
-    const auto& terms = terms_.at(booking.assetId);
     const BookingRequest extended{booking.customerId, booking.assetId, booking.requestedOn, period,
                                   booking.voucher};
     contract.extend(policy_.price(extended, account, asset, terms.tariff));
+    terms.lastOperation = request.requestedOn;
 }
 
 const Invoice& RentalDesk::acceptReturn(const ReturnRecord& returned) {
@@ -211,7 +221,7 @@ const Invoice& RentalDesk::acceptReturn(const ReturnRecord& returned) {
         asset.sendToService();
     }
     terms.maintenance = plan;
-    terms.lastMovement = returned.day;
+    terms.lastOperation = returned.day;
     return *contract.invoice();
 }
 
@@ -220,7 +230,7 @@ Id RentalDesk::startService(Id asset, Day day, std::string reason) {
     auto& terms = terms_.at(asset);
     terms.verifyTimeline(day);
     const auto job = maintenance_.start(item, day, std::move(reason));
-    terms.lastMovement = day;
+    terms.lastOperation = day;
     return job;
 }
 
@@ -231,7 +241,7 @@ void RentalDesk::finishService(Id asset, Id job, Day day, Money labor,
     terms.verifyTimeline(day);
     RepairEstimate estimate{labor, std::move(parts), item.model().replacementValue};
     maintenance_.finish(item, terms.maintenance, job, day, std::move(estimate));
-    terms.lastMovement = day;
+    terms.lastOperation = day;
 }
 
 const Inventory& RentalDesk::inventory() const {

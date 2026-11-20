@@ -7,12 +7,13 @@
 namespace lab2 {
 
 bool AssetTerms::readyFor(const Asset& asset, const Period& period) const {
-    return asset.canIssue() && lastMovement <= period.start() && !maintenance.dueOn(period.start());
+    return asset.canIssue() && lastOperation <= period.start() &&
+           !maintenance.dueOn(period.start());
 }
 
 void AssetTerms::verifyTimeline(Day day) const {
-    if (day < lastMovement) {
-        throw InvalidPeriod("Операция датирована раньше предыдущего движения предмета.");
+    if (day < lastOperation) {
+        throw InvalidPeriod("Дата раньше предыдущей операции с предметом.");
     }
 }
 

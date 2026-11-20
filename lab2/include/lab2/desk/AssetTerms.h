@@ -11,7 +11,7 @@ namespace lab2 {
 struct AssetTerms {
     Tariff tariff;
     MaintenancePlan maintenance;
-    Day lastMovement;
+    Day lastOperation;
     bool readyFor(const Asset& asset, const Period& period) const;
     void verifyTimeline(Day day) const;
 };
