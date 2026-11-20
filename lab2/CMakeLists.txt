@@ -31,5 +31,8 @@ add_library(lab2_domain
     src/inventory.cpp
     src/pricing.cpp
     src/bookings.cpp
+    src/rentals.cpp
+    src/maintenance.cpp
+    src/desk.cpp
 )
 target_include_directories(lab2_domain PUBLIC include)
