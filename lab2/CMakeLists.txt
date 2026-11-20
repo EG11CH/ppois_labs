@@ -38,3 +38,16 @@ if(BUILD_PORTABLE_BINARIES)
     endif()
     target_link_options(rental_cli PRIVATE -static)
 endif()
+
+if(BUILD_TESTING)
+    find_package(Catch2 REQUIRED)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    add_executable(lab2_tests tests/model_tests.cpp tests/desk_tests.cpp)
+    target_link_libraries(lab2_tests PRIVATE lab2_domain Catch2::Catch2WithMain)
+    list(APPEND CMAKE_MODULE_PATH "${Catch2_DIR}")
+    include(Catch)
+    catch_discover_tests(lab2_tests TEST_PREFIX "lab2: ")
+    add_test(NAME lab2_cli
+        COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/cli_test.py"
+                "$<TARGET_FILE:rental_cli>")
+endif()
