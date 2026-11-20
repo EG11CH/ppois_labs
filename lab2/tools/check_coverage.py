@@ -12,8 +12,11 @@ MINIMUM_PERCENT = 90
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("build_dir", nargs="?", default="build-lab2", type=Path)
-    build_dir = parser.parse_args().build_dir.resolve()
-    report = build_dir / "coverage-lab2"
+    parser.add_argument("--report-dir", type=Path)
+    arguments = parser.parse_args()
+    build_dir = arguments.build_dir.resolve()
+    report = arguments.report_dir or build_dir / "coverage-lab2"
+    report = report.resolve()
     report.mkdir(parents=True, exist_ok=True)
     subprocess.run(
         [

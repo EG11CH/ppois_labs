@@ -86,8 +86,12 @@ add_library(lab2_domain
 )
 target_include_directories(lab2_domain PUBLIC include)
 
-add_executable(rental_cli cli/console.cpp cli/main.cpp)
-target_link_libraries(rental_cli PRIVATE lab2_domain)
+add_library(lab2_console cli/console.cpp)
+target_include_directories(lab2_console PUBLIC cli)
+target_link_libraries(lab2_console PUBLIC lab2_domain)
+
+add_executable(rental_cli cli/main.cpp)
+target_link_libraries(rental_cli PRIVATE lab2_console)
 if(BUILD_PORTABLE_BINARIES)
     if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         message(FATAL_ERROR "Portable static executables require Linux and GCC")
@@ -98,12 +102,18 @@ endif()
 if(BUILD_TESTING)
     find_package(Catch2 REQUIRED)
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
-    add_executable(lab2_tests tests/model_tests.cpp tests/desk_tests.cpp)
-    target_link_libraries(lab2_tests PRIVATE lab2_domain Catch2::Catch2WithMain)
+    add_executable(lab2_tests tests/model_tests.cpp tests/desk_tests.cpp tests/console_tests.cpp)
+    target_link_libraries(lab2_tests PRIVATE lab2_console Catch2::Catch2WithMain)
     list(APPEND CMAKE_MODULE_PATH "${Catch2_DIR}")
     include(Catch)
-    catch_discover_tests(lab2_tests TEST_PREFIX "lab2: ")
+    catch_discover_tests(lab2_tests TEST_SPEC "[model]" TEST_PREFIX "lab2: "
+        PROPERTIES LABELS "lab2-unit")
+    catch_discover_tests(lab2_tests TEST_SPEC "[desk]" TEST_PREFIX "lab2: "
+        PROPERTIES LABELS "lab2-integration")
+    catch_discover_tests(lab2_tests TEST_SPEC "[console]" TEST_PREFIX "lab2: "
+        PROPERTIES LABELS "lab2-console")
     add_test(NAME lab2_cli
         COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/cli_test.py"
                 "$<TARGET_FILE:rental_cli>")
+    set_tests_properties(lab2_cli PROPERTIES LABELS "lab2-smoke")
 endif()

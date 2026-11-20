@@ -30,7 +30,10 @@ jobs:
         run: |
           cmake -S lab2 -B build-lab2 -DENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
           cmake --build build-lab2 --parallel 2
-          ctest --test-dir build-lab2 --output-on-failure
+          ctest --test-dir build-lab2 -LE '^lab2-smoke$' --output-on-failure
+          python3 lab2/tools/check_coverage.py build-lab2 \
+            --report-dir build-lab2/coverage-lab2-catch2
+          ctest --test-dir build-lab2 -L '^lab2-smoke$' --output-on-failure
           python3 lab2/tools/check_coverage.py build-lab2
       - name: Package and test the portable binary
         run: |
@@ -49,7 +52,9 @@ jobs:
       - uses: actions/upload-artifact@v6
         with:
           name: lab2-coverage
-          path: build-lab2/coverage-lab2/
+          path: |
+            build-lab2/coverage-lab2/
+            build-lab2/coverage-lab2-catch2/
           if-no-files-found: error
 
   release:

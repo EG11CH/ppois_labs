@@ -24,6 +24,23 @@ python3 lab2/tools/check_coverage.py build-lab2
 можно скачать `lab2-linux-x86_64.tar.gz`, распаковать командой
 `tar -xzf lab2-linux-x86_64.tar.gz` и запустить `./rental_cli` без сборки.
 
+## Тесты
+
+CTest находит 17 проверок Catch2 и один тест запуска программы.
+
+| Что проверяется | Где смотреть | Метка CTest |
+|---|---|---|
+| 8 модульных проверок правил и классов | [model_tests.cpp](tests/model_tests.cpp) | `lab2-unit` |
+| 7 сценариев через фасад `RentalDesk` | [desk_tests.cpp](tests/desk_tests.cpp) | `lab2-integration` |
+| 2 проверки консоли через потоки C++ | [console_tests.cpp](tests/console_tests.cpp) | `lab2-console` |
+| 1 запуск готового исполняемого файла | [cli_test.py](tests/cli_test.py) | `lab2-smoke` |
+
+~~~bash
+ctest --test-dir build-lab2 -N
+ctest --test-dir build-lab2 -L '^lab2-unit$' --output-on-failure
+ctest --test-dir build-lab2 -L '^lab2-(integration|console|smoke)$' --output-on-failure
+~~~
+
 ## Сценарий проката
 
 В консоли вводите по одной команде на строку. `help` выводит аргументы,
@@ -61,8 +78,11 @@ status
 ## Сборка на GitHub
 
 [Workflow Lab2](../.github/workflows/lab2.yml) проверяет форматирование
-ClangFormat, Cppcheck, тесты и покрытие строго выше 90%. Из проверенной
-сборки он собирает и повторно проверяет статический Linux x86-64 архив.
+ClangFormat, Cppcheck и тесты. Покрытие строк должно быть строго выше
+90% уже после Catch2. Отчёт `coverage-lab2-catch2` сохраняет этот замер,
+а `coverage-lab2` включает проверку запуска CLI. Из проверенной сборки
+workflow собирает статический Linux x86-64 архив и повторяет CLI-тест
+на распакованной программе.
 Теги `lab2-v*` публикуют его в Releases. Ветка для лабораторной —
 `feature/lab2-rental`. Код попадает в `main` через pull request после
 проверки преподавателем.

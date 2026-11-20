@@ -1,6 +1,7 @@
 #include "lab2/bookings/BookingRequest.h"
 #include "lab2/bookings/Cancellation.h"
 #include "lab2/bookings/HoldPolicy.h"
+#include "lab2/bookings/Reservation.h"
 #include "lab2/bookings/ReservationBook.h"
 #include "lab2/bookings/ReservationChange.h"
 #include "lab2/bookings/Waitlist.h"
@@ -13,6 +14,7 @@
 #include "lab2/customers/Membership.h"
 #include "lab2/customers/Operator.h"
 #include "lab2/errors/AssetUnavailable.h"
+#include "lab2/errors/BookingConflict.h"
 #include "lab2/errors/DuplicateId.h"
 #include "lab2/errors/InvalidContractState.h"
 #include "lab2/errors/InvalidCustomer.h"
@@ -24,12 +26,14 @@
 #include "lab2/errors/MaintenanceError.h"
 #include "lab2/errors/UnknownAsset.h"
 #include "lab2/errors/UnknownBranch.h"
+#include "lab2/errors/UnknownContract.h"
 #include "lab2/errors/UnknownCustomer.h"
 #include "lab2/errors/UnknownReservation.h"
 #include "lab2/errors/UnknownWaitRequest.h"
 #include "lab2/inventory/Asset.h"
 #include "lab2/inventory/AssetModel.h"
 #include "lab2/inventory/AssetState.h"
+#include "lab2/inventory/Availability.h"
 #include "lab2/inventory/Branch.h"
 #include "lab2/inventory/Category.h"
 #include "lab2/inventory/Condition.h"
@@ -50,13 +54,20 @@
 #include "lab2/pricing/Settlement.h"
 #include "lab2/pricing/Tariff.h"
 #include "lab2/pricing/Voucher.h"
+#include "lab2/rentals/CheckoutRecord.h"
+#include "lab2/rentals/ContractBook.h"
+#include "lab2/rentals/ExtensionRequest.h"
 #include "lab2/rentals/HandoverKit.h"
+#include "lab2/rentals/Incident.h"
 #include "lab2/rentals/Invoice.h"
 #include "lab2/rentals/Receipt.h"
+#include "lab2/rentals/RentalContract.h"
+#include "lab2/rentals/ReturnRecord.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <limits>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -324,4 +335,96 @@ TEST_CASE("Обслуживание проверяет привязку зака
     CHECK_THROWS_AS(maintenance.finish(item, plan, job, date(5), {0, {}, 0}), MaintenanceError);
     item.issue();
     CHECK_THROWS_AS(maintenance.start(item, date(5), "Выдано"), MaintenanceError);
+}
+
+TEST_CASE("Договор и журнал проверяют чек, продление и итоговый счёт", "[model]") {
+    const Period interval{date(2), date(5)};
+    const Quote original{interval, 300, 0, 500};
+    const BookingRequest booking{9, 10, date(1), interval, ""};
+    const CheckoutRecord checkout{
+        1, date(2), {1, 1, "Оператор"}, {10, date(2), {true, true, true}, ""}, {10, {}, {}}, true};
+    const Receipt deposit{1, "Оператор", date(2), {1, PaymentKind::deposit, 500, date(2)}};
+
+    CHECK_THROWS_AS((RentalContract{2, booking, checkout, original, deposit}), InvalidPayment);
+    const RentalContract valid{1, booking, checkout, original, deposit};
+    ContractBook book;
+    CHECK(book.nextId() == 1);
+    book.store(valid);
+    CHECK(book.nextId() == 2);
+    CHECK_THROWS_AS(book.store(valid), DuplicateId);
+    CHECK_THROWS_AS(book.find(2), UnknownContract);
+    CHECK(book.ids() == std::vector<Id>{1});
+    CHECK(book.activeFor(9) == 1);
+    CHECK(book.activeFor(99) == 0);
+    CHECK(book.find(1).id() == 1);
+
+    auto& contract = book.edit(1);
+    CHECK(contract.booking().assetId == 10);
+    CHECK(contract.issuedOn() == date(2));
+    CHECK(contract.receipt().payment.amount == 500);
+    CHECK_THROWS_AS(contract.extend({{date(2), date(6)}, 450, 0, 600}), InvalidContractState);
+    contract.extend({{date(2), date(6)}, 450, 0, 500});
+    CHECK(contract.quote().period.end() == date(6));
+
+    const ReturnRecord returned{1, 1, date(7), {10, date(7), {true, false, true}, "Трещина"}, 100};
+    const auto invoice = contract.prepareInvoice(returned, model(), {20, 0, 5});
+    const auto incident = contract.inspectIncident(returned, model());
+    REQUIRE(incident.has_value());
+    CHECK(incident->requiresService());
+    CHECK(incident->summary().find("Трещина") != std::string::npos);
+    CHECK(invoice.settlement.totalCharges() == 570);
+    CHECK(invoice.settlement.balanceDue() == 70);
+
+    auto wrongInvoice = invoice;
+    wrongInvoice.contractId = 2;
+    CHECK_THROWS_AS(contract.close(wrongInvoice, incident), InvalidContractState);
+    auto wrongIncident = *incident;
+    wrongIncident.assetId = 99;
+    CHECK_THROWS_AS(contract.close(invoice, wrongIncident), InvalidContractState);
+    CHECK(contract.isActive());
+
+    contract.close(invoice, incident);
+    CHECK_FALSE(contract.isActive());
+    CHECK(book.activeFor(9) == 0);
+    REQUIRE(contract.invoice().has_value());
+    CHECK(contract.invoice()->netCollected(deposit) == 570);
+    REQUIRE(contract.incident().has_value());
+    CHECK(contract.incident()->description == "Трещина");
+    CHECK_THROWS_AS(contract.close(invoice, incident), InvalidContractState);
+}
+
+TEST_CASE("Документы выдачи и возврата проверяют даты, предмет и готовность", "[model]") {
+    const Period interval{date(2), date(5)};
+    const BookingRequest booking{9, 10, date(1), interval, ""};
+    const Reservation reservation{1, booking, {interval, 300, 0, 500}};
+    const HoldPolicy holds{15, 1, true};
+    const Branch branch{1, "Пункт", "Адрес", true};
+    Asset asset{10, 1, "SN", model()};
+    CheckoutRecord checkout{
+        1, date(2), {1, 1, "Оператор"}, {10, date(2), {true, true, true}, ""}, {10, {}, {}}, true};
+    CHECK_NOTHROW(checkout.verify(reservation, asset, holds));
+    checkout.briefingGiven = false;
+    CHECK_THROWS_AS(checkout.verify(reservation, asset, holds), InvalidInspection);
+    checkout.briefingGiven = true;
+    checkout.reservationId = 2;
+    CHECK_THROWS_AS(checkout.verify(reservation, asset, holds), InvalidReservationState);
+    checkout.reservationId = 1;
+    asset.issue();
+    CHECK_THROWS_AS(checkout.verify(reservation, asset, holds), AssetUnavailable);
+
+    auto record = ReturnRecord{1, 1, date(5), {10, date(5), {true, true, true}, ""}, 0};
+    CHECK_NOTHROW(record.verify(1, asset, branch, date(2)));
+    CHECK(record.assessment(asset.model()).charge() == 0);
+    CHECK_THROWS_AS(record.verify(2, asset, branch, date(2)), InvalidContractState);
+    record.inspection.assetId = 20;
+    CHECK_THROWS_AS(record.verify(1, asset, branch, date(2)), InvalidInspection);
+
+    const ExtensionRequest good{1, date(4), date(6), "Нужен ещё день"};
+    CHECK(good.applyTo(1, date(2), interval).end() == date(6));
+    CHECK_THROWS_AS(good.applyTo(2, date(2), interval), InvalidContractState);
+
+    CHECK((Availability{10, interval, true, false}.canReserve()));
+    CHECK_THROWS_AS((Availability{10, interval, true, true}.requireAvailable()), BookingConflict);
+    CHECK_THROWS_AS((Availability{10, interval, false, false}.requireAvailable()),
+                    AssetUnavailable);
 }
