@@ -26,13 +26,15 @@ if(ENABLE_SANITIZERS)
 endif()
 
 add_library(lab2_domain
-    src/common.cpp
-    src/customers.cpp
-    src/inventory.cpp
-    src/pricing.cpp
-    src/bookings.cpp
-    src/rentals.cpp
-    src/maintenance.cpp
-    src/desk.cpp
-)
+    src/common.cpp src/customers.cpp src/inventory.cpp src/pricing.cpp
+    src/bookings.cpp src/rentals.cpp src/maintenance.cpp src/desk.cpp)
 target_include_directories(lab2_domain PUBLIC include)
+
+add_executable(rental_cli cli/console.cpp cli/main.cpp)
+target_link_libraries(rental_cli PRIVATE lab2_domain)
+if(BUILD_PORTABLE_BINARIES)
+    if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        message(FATAL_ERROR "Portable static executables require Linux and GCC")
+    endif()
+    target_link_options(rental_cli PRIVATE -static)
+endif()
