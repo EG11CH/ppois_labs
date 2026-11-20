@@ -1,21 +1,36 @@
 #include "console.h"
-#include "lab2/desk.h"
+#include "Command.h"
+#include "lab2/bookings/BookingRequest.h"
+#include "lab2/bookings/Cancellation.h"
+#include "lab2/bookings/ReservationChange.h"
+#include "lab2/bookings/ReservationState.h"
+#include "lab2/common.h"
+#include "lab2/common/Period.h"
+#include "lab2/desk/RentalDesk.h"
+#include "lab2/inventory/AssetModel.h"
+#include "lab2/inventory/AssetState.h"
+#include "lab2/inventory/InspectionChecklist.h"
+#include "lab2/pricing/Quote.h"
+#include "lab2/pricing/Tariff.h"
+#include "lab2/rentals/CheckoutRecord.h"
+#include "lab2/rentals/ExtensionRequest.h"
+#include "lab2/rentals/HandoverKit.h"
 
 #include <algorithm>
 #include <charconv>
-#include <functional>
 #include <iomanip>
+#include <iosfwd>
 #include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <system_error>
 #include <utility>
 
 namespace lab2 {
 namespace {
 
-struct Command {
-    std::string_view name;
-    std::string_view arguments;
-    std::function<void(std::istream&, std::ostream&, RentalDesk&)> execute;
-};
+using cli::Command;
 
 std::string word(std::istream& input) {
     std::string value;

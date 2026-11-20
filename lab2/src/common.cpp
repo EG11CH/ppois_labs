@@ -1,4 +1,7 @@
 #include "lab2/common.h"
+#include "common/dateBounds.h"
+#include "lab2/errors/InvalidPayment.h"
+#include "lab2/errors/InvalidPeriod.h"
 
 #include <charconv>
 #include <iomanip>
@@ -7,9 +10,6 @@
 namespace lab2 {
 
 namespace {
-constexpr auto firstDay = Day{std::chrono::year{2000} / 1 / 1};
-constexpr auto lastDay = Day{std::chrono::year{2099} / 12 / 31};
-
 int number(std::string_view text) {
     int result{};
     const auto* end = text.data() + text.size();
@@ -21,37 +21,6 @@ int number(std::string_view text) {
 }
 } // namespace
 
-Period::Period(Day first, Day last) : start_{first}, end_{last} {
-    if (first < firstDay || last > lastDay || first >= last ||
-        last - first > std::chrono::days{maxRentalDays}) {
-        throw InvalidPeriod("Нужен период от 1 до 365 дней в пределах 2000–2099 годов.");
-    }
-}
-
-bool Period::contains(Day day) const {
-    return start_ <= day && day < end_;
-}
-
-bool Period::overlaps(const Period& other) const {
-    return start_ < other.end_ && other.start_ < end_;
-}
-
-bool Period::covers(const Period& other) const {
-    return start_ <= other.start_ && other.end_ <= end_;
-}
-
-int Period::days() const {
-    return static_cast<int>((end_ - start_).count());
-}
-
-Day Period::start() const {
-    return start_;
-}
-
-Day Period::end() const {
-    return end_;
-}
-
 Day parseDay(std::string_view text) {
     if (text.size() != 10 || text[4] != '-' || text[7] != '-') {
         throw InvalidPeriod("Ожидается дата ГГГГ-ММ-ДД.");
@@ -60,7 +29,8 @@ Day parseDay(std::string_view text) {
     const auto month = std::chrono::month{static_cast<unsigned>(number(text.substr(5, 2)))};
     const auto day = std::chrono::day{static_cast<unsigned>(number(text.substr(8, 2)))};
     const auto calendarDate = year / month / day;
-    if (!calendarDate.ok() || Day{calendarDate} < firstDay || Day{calendarDate} > lastDay) {
+    if (!calendarDate.ok() || Day{calendarDate} < detail::firstDay ||
+        Day{calendarDate} > detail::lastDay) {
         throw InvalidPeriod("Укажи существующую дату в пределах 2000–2099 годов.");
     }
     return Day{calendarDate};

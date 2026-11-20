@@ -69,10 +69,16 @@ ClangFormat, Cppcheck, тесты и покрытие строго выше 90%.
 
 ## Объектная модель
 
-Порог проверяется по исходникам в `include/lab2`. Данные классов
+У каждого класса свой заголовок в `include/lab2/<раздел>` и одноимённый
+файл реализации в `src/<раздел>`. Например, `Asset` объявлен в
+[Asset.h](include/lab2/inventory/Asset.h), а его методы определены в
+[Asset.cpp](src/inventory/Asset.cpp). Исключения объявлены каждое
+в своём заголовке. Данные классов
 инкапсулированы там, где переходы меняют состояние. Небольшие записи
 передают реквизиты между операциями. `RentalDesk` координирует сценарии,
-а команды CLI преобразуют строки в аргументы методов.
+а команды CLI преобразуют строки в аргументы методов. Служебная структура
+[Command](cli/Command.h) связывает имя команды, строку аргументов и
+функцию-обработчик через поля `name`, `arguments` и `execute`.
 
 | Показатель | Требуется | Реализовано |
 |---|---:|---:|
@@ -89,135 +95,137 @@ ClangFormat, Cppcheck, тесты и покрытие строго выше 90%.
 
 ### Период
 
-[Объявления](include/lab2/common.h) · [Реализация](src/common.cpp)
+[Объявления](include/lab2/common) · [Реализации](src/common)
 
 | Класс и роль | Поля | Методы | Ассоциации |
 |---|---|---|---|
-| **Period**. Полуоткрытый интервал календарных дат, ограниченный 365 днями. | `start_`, `end_` | `Period`, `contains`, `overlaps`, `covers`, `days`, `start`, `end` | — |
+| **[Period](include/lab2/common/Period.h)**. Полуоткрытый интервал календарных дат, ограниченный 365 днями. | `start_`, `end_` | `Period`, `contains`, `overlaps`, `covers`, `days`, `start`, `end` | — |
 
 ### Клиенты и сотрудники
 
-[Объявления](include/lab2/customers.h) · [Реализация](src/customers.cpp)
+[Объявления](include/lab2/customers) · [Реализации](src/customers)
 
 | Класс и роль | Поля | Методы | Ассоциации |
 |---|---|---|---|
-| **Contact**. Выбирает адрес для уведомления с учётом согласия на почту и проверяет телефон. | `phone`, `email`, `acceptsEmail` | `canReceiveEmail`, `hasPhone`, `notificationTarget` | — |
-| **IdentityDocument**. Проверяет наличие реквизитов и срок действия на дату операции. | `number`, `issuer`, `expires` | `complete`, `validOn` | — |
-| **CustomerProfile**. Проверяет анкету и возможность идентифицировать клиента. | `name`, `contact`, `document`, `joined` | `validate`, `canIdentify` | `Contact`, `IdentityDocument` |
-| **Membership**. Даёт льготу до даты окончания и позволяет продлить членство. | `name`, `discountPercent`, `validUntil` | `discountOn`, `renew` | — |
-| **CustomerAccount**. Хранит анкету, членство и блокировку учётной записи. | `id_`, `profile_`, `membership_`, `suspended_` | `CustomerAccount`, `id`, `profile`, `membership`, `suspend`, `restore`, `canRentOn` | `CustomerProfile`, `Membership` |
-| **Eligibility**. Проверяет допуск к бронированию и выдаче с отдельными лимитами. | `maximumBookings`, `maximumContracts`, `requireReachable` | `checkBooking`, `checkIssue` | `CustomerAccount`, `Period` |
-| **CustomerRegistry**. Регистрирует и ищет клиентов, применяет правила допуска. | `accounts_`, `rules_` | `CustomerRegistry`, `enroll`, `find`, `suspend`, `restore`, `verifyBooking`, `verifyIssue` | `CustomerAccount`, `Eligibility`, `Period` |
-| **Operator**. Проверяет принадлежность к пункту и формирует подпись оператора. | `id`, `branchId`, `name` | `mayHandle`, `signature` | — |
+| **[Contact](include/lab2/customers/Contact.h)**. Выбирает адрес для уведомления с учётом согласия на почту и проверяет телефон. | `phone`, `email`, `acceptsEmail` | `canReceiveEmail`, `hasPhone`, `notificationTarget` | — |
+| **[IdentityDocument](include/lab2/customers/IdentityDocument.h)**. Проверяет наличие реквизитов и срок действия на дату операции. | `number`, `issuer`, `expires` | `complete`, `validOn` | — |
+| **[CustomerProfile](include/lab2/customers/CustomerProfile.h)**. Проверяет анкету и возможность идентифицировать клиента. | `name`, `contact`, `document`, `joined` | `validate`, `canIdentify` | `Contact`, `IdentityDocument` |
+| **[Membership](include/lab2/customers/Membership.h)**. Даёт льготу до даты окончания и позволяет продлить членство. | `name`, `discountPercent`, `validUntil` | `discountOn`, `renew` | — |
+| **[CustomerAccount](include/lab2/customers/CustomerAccount.h)**. Хранит анкету, членство и блокировку учётной записи. | `id_`, `profile_`, `membership_`, `suspended_` | `CustomerAccount`, `id`, `profile`, `membership`, `suspend`, `restore`, `canRentOn` | `CustomerProfile`, `Membership` |
+| **[Eligibility](include/lab2/customers/Eligibility.h)**. Проверяет допуск к бронированию и выдаче с отдельными лимитами. | `maximumBookings`, `maximumContracts`, `requireReachable` | `checkBooking`, `checkIssue` | `CustomerAccount`, `Period` |
+| **[CustomerRegistry](include/lab2/customers/CustomerRegistry.h)**. Регистрирует и ищет клиентов, применяет правила допуска. | `accounts_`, `rules_` | `CustomerRegistry`, `enroll`, `find`, `suspend`, `restore`, `verifyBooking`, `verifyIssue` | `CustomerAccount`, `Eligibility`, `Period` |
+| **[Operator](include/lab2/customers/Operator.h)**. Проверяет принадлежность к пункту и формирует подпись оператора. | `id`, `branchId`, `name` | `mayHandle`, `signature` | — |
 
 ### Инвентарь и осмотр
 
-[Объявления](include/lab2/inventory.h) · [Реализация](src/inventory.cpp)
+[Объявления](include/lab2/inventory) · [Реализации](src/inventory)
 
 | Класс и роль | Поля | Методы | Ассоциации |
 |---|---|---|---|
-| **Branch**. Пункт проката с адресом и правилом приёма возврата. | `id`, `name`, `address`, `acceptsReturns` | `acceptsAt`, `label` | — |
-| **Category**. Категория инвентаря с признаком обязательного инструктажа. | `code`, `name`, `requiresBriefing` | `validate`, `permitsIssue` | — |
-| **AssetModel**. Модель предмета с категорией и стоимостью замены. | `name`, `manufacturer`, `category`, `replacementValue` | `validate`, `label` | `Category` |
-| **Asset**. Экземпляр с серийным номером, пунктом и контролируемыми переходами состояний. | `id_`, `branch_`, `serial_`, `model_`, `state_` | `Asset`, `id`, `branch`, `serial`, `model`, `state`, `canIssue`, `issue`, `receive`, `sendToService`, `releaseFromService`, `retire` | `AssetModel` |
-| **InspectionChecklist**. Три результата осмотра и подсчёт дефектов. | `powersOn`, `casingIntact`, `accessoriesComplete` | `passed`, `defects` | — |
-| **Inspection**. Привязывает осмотр к экземпляру и дате, проверяет заметку о дефектах. | `assetId`, `day`, `checklist`, `note` | `condition`, `verifyFor`, `verifyBeforeIssue` | `InspectionChecklist` |
-| **Inventory**. Ведёт справочники пунктов и экземпляров, проверяет уникальность номеров. | `branches_`, `assets_` | `addBranch`, `addAsset`, `branch`, `find`, `edit`, `readyAt`, `count`, `assetIds` | `Asset`, `Branch` |
-| **Availability**. Совмещает физическую готовность, период и конфликт брони. | `assetId`, `period`, `physicallyReady`, `booked` | `canReserve`, `requireAvailable` | `Period` |
+| **[Branch](include/lab2/inventory/Branch.h)**. Пункт проката с адресом и правилом приёма возврата. | `id`, `name`, `address`, `acceptsReturns` | `acceptsAt`, `label` | — |
+| **[Category](include/lab2/inventory/Category.h)**. Категория инвентаря с признаком обязательного инструктажа. | `code`, `name`, `requiresBriefing` | `validate`, `permitsIssue` | — |
+| **[AssetModel](include/lab2/inventory/AssetModel.h)**. Модель предмета с категорией и стоимостью замены. | `name`, `manufacturer`, `category`, `replacementValue` | `validate`, `label` | `Category` |
+| **[Asset](include/lab2/inventory/Asset.h)**. Экземпляр с серийным номером, пунктом и контролируемыми переходами состояний. | `id_`, `branch_`, `serial_`, `model_`, `state_` | `Asset`, `id`, `branch`, `serial`, `model`, `state`, `canIssue`, `issue`, `receive`, `sendToService`, `releaseFromService`, `retire` | `AssetModel` |
+| **[InspectionChecklist](include/lab2/inventory/InspectionChecklist.h)**. Три результата осмотра и подсчёт дефектов. | `powersOn`, `casingIntact`, `accessoriesComplete` | `passed`, `defects` | — |
+| **[Inspection](include/lab2/inventory/Inspection.h)**. Привязывает осмотр к экземпляру и дате, проверяет заметку о дефектах. | `assetId`, `day`, `checklist`, `note` | `condition`, `verifyFor`, `verifyBeforeIssue` | `InspectionChecklist` |
+| **[Inventory](include/lab2/inventory/Inventory.h)**. Ведёт справочники пунктов и экземпляров, проверяет уникальность номеров. | `branches_`, `assets_` | `addBranch`, `addAsset`, `branch`, `find`, `edit`, `readyAt`, `count`, `assetIds` | `Asset`, `Branch` |
+| **[Availability](include/lab2/inventory/Availability.h)**. Совмещает физическую готовность, период и конфликт брони. | `assetId`, `period`, `physicallyReady`, `booked` | `canReserve`, `requireAvailable` | `Period` |
 
 ### Цена и платежи
 
-[Объявления](include/lab2/pricing.h) · [Реализация](src/pricing.cpp)
+[Объявления](include/lab2/pricing) · [Реализации](src/pricing)
 
 | Класс и роль | Поля | Методы | Ассоциации |
 |---|---|---|---|
-| **Tariff**. Вычисляет аренду с минимальным сроком, недельной и суточной ставками. | `dailyRate`, `weeklyRate`, `minimumDays` | `validate`, `rentalFor` | `Period` |
-| **Discount**. Выбирает наибольшую допустимую скидку и рассчитывает её в копейках. | `membershipPercent`, `voucherPercent`, `capPercent` | `effectivePercent`, `saving` | — |
-| **Voucher**. Проверяет код, период действия и минимальный срок акции. | `code`, `validity`, `percent`, `minimumDays` | `applies`, `redeem` | `Period` |
-| **DepositPolicy**. Считает процентный залог с учётом лимитов и стоимости замены. | `replacementPercent`, `minimum`, `maximum` | `holdFor` | `AssetModel` |
-| **LateFeePolicy**. Считает оплачиваемые дни просрочки с льготой и пределом. | `perDay`, `graceDays`, `maximumDays` | `chargedDays`, `fee` | — |
-| **DamageAssessment**. Проверяет оценку, ограничивает взыскание и вычисляет непокрытый ущерб. | `condition`, `estimatedRepair`, `replacementValue` | `validate`, `charge`, `uncoveredLoss` | — |
-| **Quote**. Фиксирует период, арендную плату, скидку и залог. | `period`, `baseRent`, `discount`, `deposit` | `rentalDue`, `dueAtPickup` | `Period` |
-| **Payment**. Проверяет реквизиты движения денег и задаёт его знак. | `contractId`, `kind`, `amount`, `day` | `matches`, `verify`, `movement` | — |
-| **Settlement**. Сводит аренду, ущерб, просрочку и залог в доплату или возврат. | `quote`, `lateFee`, `damageFee`, `heldDeposit` | `totalCharges`, `balanceDue`, `refundDue` | `Quote` |
+| **[Tariff](include/lab2/pricing/Tariff.h)**. Вычисляет аренду с минимальным сроком, недельной и суточной ставками. | `dailyRate`, `weeklyRate`, `minimumDays` | `validate`, `rentalFor` | `Period` |
+| **[Discount](include/lab2/pricing/Discount.h)**. Выбирает наибольшую допустимую скидку и рассчитывает её в копейках. | `membershipPercent`, `voucherPercent`, `capPercent` | `effectivePercent`, `saving` | — |
+| **[Voucher](include/lab2/pricing/Voucher.h)**. Проверяет код, период действия и минимальный срок акции. | `code`, `validity`, `percent`, `minimumDays` | `applies`, `redeem` | `Period` |
+| **[DepositPolicy](include/lab2/pricing/DepositPolicy.h)**. Считает процентный залог с учётом лимитов и стоимости замены. | `replacementPercent`, `minimum`, `maximum` | `holdFor` | `AssetModel` |
+| **[LateFeePolicy](include/lab2/pricing/LateFeePolicy.h)**. Считает оплачиваемые дни просрочки с льготой и пределом. | `perDay`, `graceDays`, `maximumDays` | `chargedDays`, `fee` | — |
+| **[DamageAssessment](include/lab2/pricing/DamageAssessment.h)**. Проверяет оценку, ограничивает взыскание и вычисляет непокрытый ущерб. | `condition`, `estimatedRepair`, `replacementValue` | `validate`, `charge`, `uncoveredLoss` | — |
+| **[Quote](include/lab2/pricing/Quote.h)**. Фиксирует период, арендную плату, скидку и залог. | `period`, `baseRent`, `discount`, `deposit` | `rentalDue`, `dueAtPickup` | `Period` |
+| **[Payment](include/lab2/pricing/Payment.h)**. Проверяет реквизиты движения денег и задаёт его знак. | `contractId`, `kind`, `amount`, `day` | `matches`, `verify`, `movement` | — |
+| **[Settlement](include/lab2/pricing/Settlement.h)**. Сводит аренду, ущерб, просрочку и залог в доплату или возврат. | `quote`, `lateFee`, `damageFee`, `heldDeposit` | `totalCharges`, `balanceDue`, `refundDue` | `Quote` |
 
 ### Бронирование и ожидание
 
-[Объявления](include/lab2/bookings.h) · [Реализация](src/bookings.cpp)
+[Объявления](include/lab2/bookings) · [Реализации](src/bookings)
 
 | Класс и роль | Поля | Методы | Ассоциации |
 |---|---|---|---|
-| **BookingRequest**. Связывает клиента, предмет, дату запроса, период и возможный промокод. | `customerId`, `assetId`, `requestedOn`, `period`, `voucher` | `validate`, `concerns` | `Period` |
-| **HoldPolicy**. Проверяет срок предварительной записи и допустимые даты получения. | `maximumAdvanceDays`, `pickupGraceDays`, `allowSameDay` | `checkRequest`, `permitsPickup`, `expired` | `BookingRequest`, `Period` |
-| **Cancellation**. Подтверждает реквизиты отмены и проверяет, была ли неявка. | `reservationId`, `day`, `reason` | `verify`, `isNoShow` | `HoldPolicy`, `Period` |
-| **ReservationChange**. Проверяет перенос и создаёт запрос с новым периодом. | `reservationId`, `day`, `replacement`, `reason` | `verify`, `applyTo` | `BookingRequest`, `Period` |
-| **Reservation**. Хранит заявку, снимок цены, статус и сведения об отмене. | `id_`, `request_`, `quote_`, `state_`, `cancellation_` | `Reservation`, `id`, `state`, `request`, `quote`, `cancellation`, `requireHeld`, `blocks`, `cancel`, `reschedule`, `redeem` | `BookingRequest`, `Cancellation`, `Period`, `Quote` |
-| **ReservationBook**. Хранит брони, ищет пересечения, считает лимиты и снимает просроченные брони. | `rows_`, `nextId_` | `store`, `find`, `edit`, `conflicts`, `hasUpcoming`, `heldFor`, `expire`, `ids` | `BookingRequest`, `HoldPolicy`, `Period`, `Quote`, `Reservation` |
-| **WaitRequest**. Проверяет актуальность заявки и готовит повторную попытку бронирования. | `id`, `request`, `fulfilled` | `matches`, `reconsider` | `BookingRequest` |
-| **Waitlist**. Ставит заявки в очередь по идентификатору и фиксирует исполнение. | `rows_`, `nextId_` | `enqueue`, `find`, `fulfil`, `candidates` | `BookingRequest`, `WaitRequest` |
+| **[BookingRequest](include/lab2/bookings/BookingRequest.h)**. Связывает клиента, предмет, дату запроса, период и возможный промокод. | `customerId`, `assetId`, `requestedOn`, `period`, `voucher` | `validate`, `concerns` | `Period` |
+| **[HoldPolicy](include/lab2/bookings/HoldPolicy.h)**. Проверяет срок предварительной записи и допустимые даты получения. | `maximumAdvanceDays`, `pickupGraceDays`, `allowSameDay` | `checkRequest`, `permitsPickup`, `expired` | `BookingRequest`, `Period` |
+| **[Cancellation](include/lab2/bookings/Cancellation.h)**. Подтверждает реквизиты отмены и проверяет, была ли неявка. | `reservationId`, `day`, `reason` | `verify`, `isNoShow` | `HoldPolicy`, `Period` |
+| **[ReservationChange](include/lab2/bookings/ReservationChange.h)**. Проверяет перенос и создаёт запрос с новым периодом. | `reservationId`, `day`, `replacement`, `reason` | `verify`, `applyTo` | `BookingRequest`, `Period` |
+| **[Reservation](include/lab2/bookings/Reservation.h)**. Хранит заявку, снимок цены, статус и сведения об отмене. | `id_`, `request_`, `quote_`, `state_`, `cancellation_` | `Reservation`, `id`, `state`, `request`, `quote`, `cancellation`, `requireHeld`, `blocks`, `cancel`, `reschedule`, `redeem` | `BookingRequest`, `Cancellation`, `Period`, `Quote` |
+| **[ReservationBook](include/lab2/bookings/ReservationBook.h)**. Хранит брони, ищет пересечения, считает лимиты и снимает просроченные брони. | `rows_`, `nextId_` | `store`, `find`, `edit`, `conflicts`, `hasUpcoming`, `heldFor`, `expire`, `ids` | `BookingRequest`, `HoldPolicy`, `Period`, `Quote`, `Reservation` |
+| **[WaitRequest](include/lab2/bookings/WaitRequest.h)**. Проверяет актуальность заявки и готовит повторную попытку бронирования. | `id`, `request`, `fulfilled` | `matches`, `reconsider` | `BookingRequest` |
+| **[Waitlist](include/lab2/bookings/Waitlist.h)**. Ставит заявки в очередь по идентификатору и фиксирует исполнение. | `rows_`, `nextId_` | `enqueue`, `find`, `fulfil`, `candidates` | `BookingRequest`, `WaitRequest` |
 
 ### Договор и возврат
 
-[Объявления](include/lab2/rentals.h) · [Реализация](src/rentals.cpp)
+[Объявления](include/lab2/rentals) · [Реализации](src/rentals)
 
 | Класс и роль | Поля | Методы | Ассоциации |
 |---|---|---|---|
-| **Accessory**. Проверяет наличие конкретной обязательной принадлежности. | `code`, `label`, `required` | `missingFrom`, `description` | — |
-| **HandoverKit**. Описывает ожидаемый и фактический комплект и перечисляет недостающее. | `assetId`, `expected`, `present` | `missing`, `verify` | `Accessory` |
-| **CheckoutRecord**. Собирает доказательства готовности к выдаче и проверяет их вместе. | `reservationId`, `day`, `clerk`, `inspection`, `kit`, `briefingGiven` | `verify` | `Asset`, `HandoverKit`, `HoldPolicy`, `Inspection`, `Operator`, `Reservation` |
-| **ReturnRecord**. Проверяет договор, пункт, дату и осмотр, формирует оценку ущерба. | `contractId`, `branchId`, `day`, `inspection`, `damageEstimate` | `verify`, `assessment` | `Asset`, `AssetModel`, `Branch`, `Inspection` |
-| **ExtensionRequest**. Проверяет срок и причину продления, рассчитывает новый интервал. | `contractId`, `requestedOn`, `until`, `reason` | `applyTo` | `Period` |
-| **Receipt**. Подтверждает приём залога по договору с подписью и датой. | `contractId`, `clerkSignature`, `day`, `payment` | `verifyDeposit`, `summary` | `Payment`, `Quote` |
-| **Incident**. Описывает зарегистрированное повреждение и необходимость обслуживания. | `contractId`, `assetId`, `day`, `description`, `assessment` | `requiresService`, `summary` | `DamageAssessment` |
-| **Invoice**. Проверяет итоговый платёж и сверяет чистый приход с чеком. | `contractId`, `issuedOn`, `settlement`, `finalPayment` | `verify`, `netCollected`, `summary` | `Payment`, `Receipt`, `Settlement` |
-| **RentalContract**. Сохраняет сведения о выдаче, цену, чек, итоговый счёт и акт повреждения. | `id_`, `booking_`, `checkout_`, `quote_`, `receipt_`, `invoice_`, `incident_` | `RentalContract`, `id`, `booking`, `issuedOn`, `quote`, `receipt`, `invoice`, `incident`, `isActive`, `requireActive`, `extend`, `prepareInvoice`, `inspectIncident`, `close` | `AssetModel`, `BookingRequest`, `CheckoutRecord`, `Incident`, `Invoice`, `LateFeePolicy`, `Quote`, `Receipt`, `ReturnRecord` |
-| **ContractBook**. Хранит договоры, выдаёт идентификатор и считает действующие договоры клиента. | `rows_`, `nextId_` | `nextId`, `store`, `find`, `edit`, `activeFor`, `ids` | `RentalContract` |
+| **[Accessory](include/lab2/rentals/Accessory.h)**. Проверяет наличие конкретной обязательной принадлежности. | `code`, `label`, `required` | `missingFrom`, `description` | — |
+| **[HandoverKit](include/lab2/rentals/HandoverKit.h)**. Описывает ожидаемый и фактический комплект и перечисляет недостающее. | `assetId`, `expected`, `present` | `missing`, `verify` | `Accessory` |
+| **[CheckoutRecord](include/lab2/rentals/CheckoutRecord.h)**. Собирает доказательства готовности к выдаче и проверяет их вместе. | `reservationId`, `day`, `clerk`, `inspection`, `kit`, `briefingGiven` | `verify` | `Asset`, `HandoverKit`, `HoldPolicy`, `Inspection`, `Operator`, `Reservation` |
+| **[ReturnRecord](include/lab2/rentals/ReturnRecord.h)**. Проверяет договор, пункт, дату и осмотр, формирует оценку ущерба. | `contractId`, `branchId`, `day`, `inspection`, `damageEstimate` | `verify`, `assessment` | `Asset`, `AssetModel`, `Branch`, `Inspection` |
+| **[ExtensionRequest](include/lab2/rentals/ExtensionRequest.h)**. Проверяет срок и причину продления, рассчитывает новый интервал. | `contractId`, `requestedOn`, `until`, `reason` | `applyTo` | `Period` |
+| **[Receipt](include/lab2/rentals/Receipt.h)**. Подтверждает приём залога по договору с подписью и датой. | `contractId`, `clerkSignature`, `day`, `payment` | `verifyDeposit`, `summary` | `Payment`, `Quote` |
+| **[Incident](include/lab2/rentals/Incident.h)**. Описывает зарегистрированное повреждение и необходимость обслуживания. | `contractId`, `assetId`, `day`, `description`, `assessment` | `requiresService`, `summary` | `DamageAssessment` |
+| **[Invoice](include/lab2/rentals/Invoice.h)**. Проверяет итоговый платёж и сверяет чистый приход с чеком. | `contractId`, `issuedOn`, `settlement`, `finalPayment` | `verify`, `netCollected`, `summary` | `Payment`, `Receipt`, `Settlement` |
+| **[RentalContract](include/lab2/rentals/RentalContract.h)**. Сохраняет сведения о выдаче, цену, чек, итоговый счёт и акт повреждения. | `id_`, `booking_`, `checkout_`, `quote_`, `receipt_`, `invoice_`, `incident_` | `RentalContract`, `id`, `booking`, `issuedOn`, `quote`, `receipt`, `invoice`, `incident`, `isActive`, `requireActive`, `extend`, `prepareInvoice`, `inspectIncident`, `close` | `AssetModel`, `BookingRequest`, `CheckoutRecord`, `Incident`, `Invoice`, `LateFeePolicy`, `Quote`, `Receipt`, `ReturnRecord` |
+| **[ContractBook](include/lab2/rentals/ContractBook.h)**. Хранит договоры, выдаёт идентификатор и считает действующие договоры клиента. | `rows_`, `nextId_` | `nextId`, `store`, `find`, `edit`, `activeFor`, `ids` | `RentalContract` |
 
 ### Обслуживание
 
-[Объявления](include/lab2/maintenance.h) · [Реализация](src/maintenance.cpp)
+[Объявления](include/lab2/maintenance) · [Реализации](src/maintenance)
 
 | Класс и роль | Поля | Методы | Ассоциации |
 |---|---|---|---|
-| **ServiceRule**. Определяет необходимость обслуживания по сроку, циклам и повреждению. | `maximumCycles`, `maximumDays`, `inspectAfterDamage` | `due`, `validate` | — |
-| **MaintenancePlan**. Хранит дату обслуживания и число прокатов после него. | `assetId`, `rule`, `lastService`, `rentalCycles` | `dueOn`, `recordReturn`, `reset` | `ServiceRule` |
-| **Part**. Хранит реквизиты и цену детали, рассчитывает стоимость количества. | `sku`, `name`, `supplier`, `unitPrice` | `validate`, `priceFor` | — |
-| **PartUsage**. Связывает деталь, количество и причину замены. | `part`, `quantity`, `reason` | `cost`, `summary` | `Part` |
-| **RepairEstimate**. Складывает работу и детали, сравнивает с бюджетом. | `labor`, `parts`, `limit` | `total`, `requireWithinBudget` | `PartUsage` |
-| **MaintenanceJob**. Отслеживает открытие, причину, закрытие и фактическую смету заказа. | `id_`, `assetId_`, `opened_`, `reason_`, `closed_`, `estimate_` | `MaintenanceJob`, `id`, `assetId`, `open`, `finish`, `expense`, `summary` | `RepairEstimate` |
-| **ServiceLog**. Хранит заказы, проверяет единственность активного заказа и считает расходы. | `jobs_`, `nextId_` | `openFor`, `find`, `close`, `activeFor`, `totalFor` | `MaintenanceJob`, `RepairEstimate` |
-| **MaintenanceDesk**. Выдаёт план, согласует предмет, заказ и дату завершения ремонта. | `rule_`, `log_` | `MaintenanceDesk`, `planFor`, `start`, `finish`, `log` | `Asset`, `MaintenancePlan`, `RepairEstimate`, `ServiceLog`, `ServiceRule` |
+| **[ServiceRule](include/lab2/maintenance/ServiceRule.h)**. Определяет необходимость обслуживания по сроку, циклам и повреждению. | `maximumCycles`, `maximumDays`, `inspectAfterDamage` | `due`, `validate` | — |
+| **[MaintenancePlan](include/lab2/maintenance/MaintenancePlan.h)**. Хранит дату обслуживания и число прокатов после него. | `assetId`, `rule`, `lastService`, `rentalCycles` | `dueOn`, `recordReturn`, `reset` | `ServiceRule` |
+| **[Part](include/lab2/maintenance/Part.h)**. Хранит реквизиты и цену детали, рассчитывает стоимость количества. | `sku`, `name`, `supplier`, `unitPrice` | `validate`, `priceFor` | — |
+| **[PartUsage](include/lab2/maintenance/PartUsage.h)**. Связывает деталь, количество и причину замены. | `part`, `quantity`, `reason` | `cost`, `summary` | `Part` |
+| **[RepairEstimate](include/lab2/maintenance/RepairEstimate.h)**. Складывает работу и детали, сравнивает с бюджетом. | `labor`, `parts`, `limit` | `total`, `requireWithinBudget` | `PartUsage` |
+| **[MaintenanceJob](include/lab2/maintenance/MaintenanceJob.h)**. Отслеживает открытие, причину, закрытие и фактическую смету заказа. | `id_`, `assetId_`, `opened_`, `reason_`, `closed_`, `estimate_` | `MaintenanceJob`, `id`, `assetId`, `open`, `finish`, `expense`, `summary` | `RepairEstimate` |
+| **[ServiceLog](include/lab2/maintenance/ServiceLog.h)**. Хранит заказы, проверяет единственность активного заказа и считает расходы. | `jobs_`, `nextId_` | `openFor`, `find`, `close`, `activeFor`, `totalFor` | `MaintenanceJob`, `RepairEstimate` |
+| **[MaintenanceDesk](include/lab2/maintenance/MaintenanceDesk.h)**. Выдаёт план, согласует предмет, заказ и дату завершения ремонта. | `rule_`, `log_` | `MaintenanceDesk`, `planFor`, `start`, `finish`, `log` | `Asset`, `MaintenancePlan`, `RepairEstimate`, `ServiceLog`, `ServiceRule` |
 
 ### Координация операций
 
-[Объявления](include/lab2/desk.h) · [Реализация](src/desk.cpp)
+[Объявления](include/lab2/desk) · [Реализации](src/desk)
 
 | Класс и роль | Поля | Методы | Ассоциации |
 |---|---|---|---|
-| **RentalPolicy**. Группирует правила пункта и рассчитывает цену для заданного клиента и предмета. | `eligibility`, `holds`, `deposits`, `lateFees`, `voucher`, `service`, `discountCap` | `price` | `Asset`, `BookingRequest`, `CustomerAccount`, `DepositPolicy`, `Eligibility`, `HoldPolicy`, `LateFeePolicy`, `ServiceRule`, `Tariff`, `Voucher` |
-| **AssetTerms**. Связывает тариф, план обслуживания и дату последнего движения. | `tariff`, `maintenance`, `lastMovement` | `readyFor`, `verifyTimeline` | `Asset`, `MaintenancePlan`, `Period`, `Tariff` |
-| **RentalDesk**. Оркестрирует сценарии поверх реестров, очереди, правил и мастерской. | `policy_`, `customers_`, `inventory_`, `reservations_`, `waiting_`, `contracts_`, `maintenance_`, `terms_` | `RentalDesk`, `addBranch`, `enroll`, `addAsset`, `retireAsset`, `suspendCustomer`, `restoreCustomer`, `availability`, `preview`, `reserve`, `cancel`, `reschedule`, `expire`, `joinWaitlist`, `promote`, `waitingFor`, `issue`, `extend`, `acceptReturn`, `startService`, `finishService`, `inventory`, `reservations`, `contracts`, `serviceLog` | `Asset`, `AssetTerms`, `BookingRequest`, `Branch`, `Cancellation`, `CheckoutRecord`, `ContractBook`, `CustomerAccount`, `CustomerRegistry`, `ExtensionRequest`, `Inventory`, `MaintenanceDesk`, `PartUsage`, `Period`, `RentalPolicy`, `ReservationBook`, `ReservationChange`, `ReturnRecord`, `Tariff`, `Waitlist` |
+| **[RentalPolicy](include/lab2/desk/RentalPolicy.h)**. Группирует правила пункта и рассчитывает цену для заданного клиента и предмета. | `eligibility`, `holds`, `deposits`, `lateFees`, `voucher`, `service`, `discountCap` | `price` | `Asset`, `BookingRequest`, `CustomerAccount`, `DepositPolicy`, `Eligibility`, `HoldPolicy`, `LateFeePolicy`, `ServiceRule`, `Tariff`, `Voucher` |
+| **[AssetTerms](include/lab2/desk/AssetTerms.h)**. Связывает тариф, план обслуживания и дату последнего движения. | `tariff`, `maintenance`, `lastMovement` | `readyFor`, `verifyTimeline` | `Asset`, `MaintenancePlan`, `Period`, `Tariff` |
+| **[RentalDesk](include/lab2/desk/RentalDesk.h)**. Оркестрирует сценарии поверх реестров, очереди, правил и мастерской. | `policy_`, `customers_`, `inventory_`, `reservations_`, `waiting_`, `contracts_`, `maintenance_`, `terms_` | `RentalDesk`, `addBranch`, `enroll`, `addAsset`, `retireAsset`, `suspendCustomer`, `restoreCustomer`, `availability`, `preview`, `reserve`, `cancel`, `reschedule`, `expire`, `joinWaitlist`, `promote`, `waitingFor`, `issue`, `extend`, `acceptReturn`, `startService`, `finishService`, `inventory`, `reservations`, `contracts`, `serviceLog` | `Asset`, `AssetTerms`, `BookingRequest`, `Branch`, `Cancellation`, `CheckoutRecord`, `ContractBook`, `CustomerAccount`, `CustomerRegistry`, `ExtensionRequest`, `Inventory`, `MaintenanceDesk`, `PartUsage`, `Period`, `RentalPolicy`, `ReservationBook`, `ReservationChange`, `ReturnRecord`, `Tariff`, `Waitlist` |
 
 ## Исключения
 
-Все наследуются от `std::runtime_error` и объявлены в [common.h](include/lab2/common.h). Консоль выводит сообщение и принимает следующую строку.
+Все наследуются от `std::runtime_error`. Заголовки находятся в
+[include/lab2/errors](include/lab2/errors). Консоль выводит сообщение и
+принимает следующую строку.
 
 | Исключение | Причина |
 |---|---|
-| `InvalidPeriod` | Некорректная дата, длительность или последовательность дат. |
-| `InvalidCustomer` | Некорректная анкета, просроченные документы, блокировка или превышение лимита. |
-| `DuplicateId` | Повтор идентификатора или серийного номера. |
-| `UnknownCustomer` | Клиент отсутствует в реестре. |
-| `UnknownAsset` | Предмет отсутствует в каталоге. |
-| `UnknownBranch` | Пункт отсутствует в справочнике. |
-| `AssetUnavailable` | Физическое состояние или обслуживание препятствуют операции. |
-| `BookingConflict` | Интервал пересекается с бронью или будущая бронь препятствует списанию. |
-| `UnknownReservation` | Бронь отсутствует в журнале. |
-| `InvalidReservationState` | Статус или реквизиты брони либо ожидания запрещают операцию. |
-| `UnknownContract` | Договор отсутствует в журнале. |
-| `InvalidContractState` | Статус договора, дата или пункт запрещают операцию. |
-| `InvalidPayment` | Некорректная цена, процент, промокод, сумма либо реквизиты платежа. |
-| `InvalidInspection` | Расхождение в осмотре, комплекте, инструктаже или оценке повреждения. |
-| `MaintenanceError` | Неправильный заказ, план, дата обслуживания или смета. |
-| `UnknownWaitRequest` | Заявка на ожидание отсутствует в очереди. |
-| `InvalidInventory` | Некорректные данные инвентаря либо запрещённое списание. |
+| [`InvalidPeriod`](include/lab2/errors/InvalidPeriod.h) | Некорректная дата, длительность или последовательность дат. |
+| [`InvalidCustomer`](include/lab2/errors/InvalidCustomer.h) | Некорректная анкета, просроченные документы, блокировка или превышение лимита. |
+| [`DuplicateId`](include/lab2/errors/DuplicateId.h) | Повтор идентификатора или серийного номера. |
+| [`UnknownCustomer`](include/lab2/errors/UnknownCustomer.h) | Клиент отсутствует в реестре. |
+| [`UnknownAsset`](include/lab2/errors/UnknownAsset.h) | Предмет отсутствует в каталоге. |
+| [`UnknownBranch`](include/lab2/errors/UnknownBranch.h) | Пункт отсутствует в справочнике. |
+| [`AssetUnavailable`](include/lab2/errors/AssetUnavailable.h) | Физическое состояние или обслуживание препятствуют операции. |
+| [`BookingConflict`](include/lab2/errors/BookingConflict.h) | Интервал пересекается с бронью или будущая бронь препятствует списанию. |
+| [`UnknownReservation`](include/lab2/errors/UnknownReservation.h) | Бронь отсутствует в журнале. |
+| [`InvalidReservationState`](include/lab2/errors/InvalidReservationState.h) | Статус или реквизиты брони либо ожидания запрещают операцию. |
+| [`UnknownContract`](include/lab2/errors/UnknownContract.h) | Договор отсутствует в журнале. |
+| [`InvalidContractState`](include/lab2/errors/InvalidContractState.h) | Статус договора, дата или пункт запрещают операцию. |
+| [`InvalidPayment`](include/lab2/errors/InvalidPayment.h) | Некорректная цена, процент, промокод, сумма либо реквизиты платежа. |
+| [`InvalidInspection`](include/lab2/errors/InvalidInspection.h) | Расхождение в осмотре, комплекте, инструктаже или оценке повреждения. |
+| [`MaintenanceError`](include/lab2/errors/MaintenanceError.h) | Неправильный заказ, план, дата обслуживания или смета. |
+| [`UnknownWaitRequest`](include/lab2/errors/UnknownWaitRequest.h) | Заявка на ожидание отсутствует в очереди. |
+| [`InvalidInventory`](include/lab2/errors/InvalidInventory.h) | Некорректные данные инвентаря либо запрещённое списание. |

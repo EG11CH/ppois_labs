@@ -1,6 +1,30 @@
-#include "lab2/desk.h"
+#include "lab2/bookings/BookingRequest.h"
+#include "lab2/bookings/ReservationState.h"
+#include "lab2/common.h"
+#include "lab2/desk/demo.h"
+#include "lab2/errors/AssetUnavailable.h"
+#include "lab2/errors/BookingConflict.h"
+#include "lab2/errors/DuplicateId.h"
+#include "lab2/errors/InvalidContractState.h"
+#include "lab2/errors/InvalidCustomer.h"
+#include "lab2/errors/InvalidInspection.h"
+#include "lab2/errors/InvalidInventory.h"
+#include "lab2/errors/InvalidPayment.h"
+#include "lab2/errors/InvalidPeriod.h"
+#include "lab2/errors/InvalidReservationState.h"
+#include "lab2/errors/MaintenanceError.h"
+#include "lab2/errors/UnknownBranch.h"
+#include "lab2/errors/UnknownContract.h"
+#include "lab2/inventory/Asset.h"
+#include "lab2/inventory/AssetState.h"
+#include "lab2/pricing/Tariff.h"
+#include "lab2/rentals/CheckoutRecord.h"
+#include "lab2/rentals/ReturnRecord.h"
 
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
+#include <string>
+#include <vector>
 
 using namespace lab2;
 

@@ -1,5 +1,5 @@
 #include "console.h"
-#include "lab2/desk.h"
+#include "lab2/desk/demo.h"
 
 #include <iostream>
 
